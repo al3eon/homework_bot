@@ -115,6 +115,7 @@ def main():
             homework = check_response(response)
             if not homework:
                 logger.debug('Статус не менялся')
+                continue
             if send_message(bot, parse_status(homework[0])):
                 timestamp = response.get('current_date', timestamp)
 
