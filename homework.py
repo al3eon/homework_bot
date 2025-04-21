@@ -33,8 +33,8 @@ HOMEWORK_VERDICTS = {
 
 def check_tokens():
     """Проверяет доступность обязательных переменных окружения."""
-    test_list = ('PRACTICUM_TOKEN', 'TELEGRAM_TOKEN', 'TELEGRAM_CHAT_ID')
-    missing_tokens = [token for token in test_list
+    token_list = ('PRACTICUM_TOKEN', 'TELEGRAM_TOKEN', 'TELEGRAM_CHAT_ID')
+    missing_tokens = [token for token in token_list
                       if globals()[token] is None or globals()[token] == '']
     if missing_tokens:
         tokens_str = ', '.join(missing_tokens)
