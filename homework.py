@@ -8,13 +8,9 @@ import requests
 from dotenv import load_dotenv
 from telebot import TeleBot, apihelper
 
-load_dotenv()
+from exceptions import APIResponseError
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s, %(levelname)s, %(message)s, %(name)s',
-    handlers=[StreamHandler(sys.stdout)]
-)
+load_dotenv()
 
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -35,10 +31,10 @@ def check_tokens():
     """Проверяет доступность обязательных переменных окружения."""
     token_list = ('PRACTICUM_TOKEN', 'TELEGRAM_TOKEN', 'TELEGRAM_CHAT_ID')
     missing_tokens = [token for token in token_list
-                      if globals()[token] is None or globals()[token] == '']
+                      if not globals()[token]]
     if missing_tokens:
         tokens_str = ', '.join(missing_tokens)
-        message = (f'Отсутствуют обязательные переменные окружения: '
+        message = ('Отсутствуют обязательные переменные окружения: '
                    f'{tokens_str}')
         logging.critical(message)
         raise ValueError(message)
@@ -65,7 +61,7 @@ def get_api_answer(timestamp):
         raise ConnectionError(f"Ошибка при попытке подключения к API: {error}")
 
     if response.status_code != requests.codes.ok:
-        raise requests.HTTPError(f"API вернул код {response.status_code}")
+        raise APIResponseError(f"API вернул код {response.status_code}")
 
     logging.debug("Успешно получен ответ от API.")
     return response.json()
@@ -98,7 +94,7 @@ def parse_status(homework):
         if key not in homework
     ]
     if missing_keys:
-        raise KeyError(f'Отсутствуют обязательные ключи:'
+        raise KeyError('Отсутствуют обязательные ключи:'
                        f' {", ".join(missing_keys)}')
 
     status = homework['status']
@@ -110,22 +106,13 @@ def parse_status(homework):
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
-# Стоило так делать, или нет? Код вроде чище смотреться стал
-def safe_send(bot, message):
-    """Пытается отправить сообщение, если не выходит — пишет ошибку в лог."""
-    try:
-        send_message(bot, message)
-    except (requests.exceptions.RequestException,
-            apihelper.ApiException) as error:
-        logging.exception(error)
-
-
 def main():
     """Основная логика работы бота."""
     check_tokens()
     bot = TeleBot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
-    last_message = None
+    last_message = ''
+    last_error_message = ''
 
     while True:
         try:
@@ -137,14 +124,26 @@ def main():
 
             new_message = parse_status(homework[0])
             if new_message != last_message:
-                safe_send(bot, new_message)
+                send_message(bot, new_message)
                 last_message = new_message
                 timestamp = response.get('current_date', timestamp)
 
+        except (requests.exceptions.RequestException,
+                apihelper.ApiException) as error:
+            logging.exception(f'Ошибка при отправке сообщения: {error}')
+
         except Exception as error:
-            message = f'Сбой в работе программы: {error}'
-            logging.exception(message)
-            safe_send(bot, message)
+            if last_error_message != error:
+                message = f'Сбой в работе программы: {error}'
+                logging.exception(message)
+                last_error_message = error
+                # Тут есть сомнения, что правильно понял, как должно быть
+                try:
+                    send_message(bot, message)
+                except (requests.exceptions.RequestException,
+                        apihelper.ApiException) as send_error:
+                    logging.exception('Ошибка при отправке сообщения'
+                                      f' об ошибке: {send_error}')
         finally:
             time.sleep(RETRY_PERIOD)
 
