@@ -112,7 +112,6 @@ def main():
     bot = TeleBot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
     last_message = ''
-    last_error_message = ''
 
     while True:
         try:
@@ -133,13 +132,12 @@ def main():
             logging.exception(f'Ошибка при отправке сообщения: {error}')
 
         except Exception as error:
-            if last_error_message != error:
-                message = f'Сбой в работе программы: {error}'
-                logging.exception(message)
-                last_error_message = error
-                # Тут есть сомнения, что правильно понял, как должно быть
+            message = f'Сбой в работе программы: {error}'
+            logging.exception(message)
+            if last_message != error:
                 try:
                     send_message(bot, message)
+                    last_message = error
                 except (requests.exceptions.RequestException,
                         apihelper.ApiException) as send_error:
                     logging.exception('Ошибка при отправке сообщения'
