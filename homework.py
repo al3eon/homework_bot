@@ -58,12 +58,12 @@ def get_api_answer(timestamp):
             params={'from_date': timestamp}
         )
     except requests.RequestException as error:
-        raise ConnectionError(f"Ошибка при попытке подключения к API: {error}")
+        raise ConnectionError(f'Ошибка при попытке подключения к API: {error}')
 
     if response.status_code != requests.codes.ok:
-        raise APIResponseError(f"API вернул код {response.status_code}")
+        raise APIResponseError(f'API вернул код {response.status_code}')
 
-    logging.debug("Успешно получен ответ от API.")
+    logging.debug('Успешно получен ответ от API.')
     return response.json()
 
 
@@ -88,7 +88,7 @@ def check_response(response):
 
 def parse_status(homework):
     """Проверка статуса."""
-    logging.debug('Начало проверки статуса домашней работы"')
+    logging.debug('Начало проверки статуса домашней работы')
     missing_keys = [
         key for key in ['homework_name', 'status']
         if key not in homework
@@ -101,7 +101,7 @@ def parse_status(homework):
     if status not in HOMEWORK_VERDICTS.keys():
         raise ValueError(f'Неизвестный статус: {status}')
 
-    homework_name = homework["homework_name"]
+    homework_name = homework['homework_name']
     verdict = HOMEWORK_VERDICTS[status]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
